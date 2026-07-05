@@ -1,55 +1,79 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 const dotenv = require("dotenv");
 
 dotenv.config();
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  connectionTimeout: 30000,
-  greetingTimeout: 30000,
-  socketTimeout: 30000,
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-const sendBookingEmail = async (userEmail, userName, eventTitle) => {
-  try {
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: userEmail,
-      subject: `Booking Confirmed: ${eventTitle}`,
-      html: `
-        <h2>Hi ${userName}!</h2>
-        <p>Your booking for the event <strong>${eventTitle}</strong> is successfully confirmed.</p>
-        <p>Thank you for choosing Eventora.</p>
-      `,
-    };
-    await transporter.sendMail(mailOptions);
-    console.log("Email sent successfully to", userEmail);
-  } catch (error) {
-    console.error("Error sending email:", error);
-  }
-};
-
+// =======================
+// Send OTP Email
+// =======================
 const sendOTPEmail = async (email, otp, type) => {
-  console.log("🔥 EMAIL FUNCTION CALLED", email, otp, type);
-
   try {
-    const result = await resend.emails.send({
-      from: "Eventora <onboarding@resend.dev>",
+    const response = await resend.emails.send({
+      from: "Eventora <onboarding@resend.dev>", // Change after verifying your own domain
       to: email,
-      subject: "OTP Verification",
-      html: `<h1>Your OTP is ${otp}</h1>`,
+      subject:
+        type === "account_verification"
+          ? "Verify Your Account"
+          : "Your OTP Code",
+      html: `
+        <div style="font-family: Arial, sans-serif;">
+          <h2>Eventora OTP Verification</h2>
+          <p>Your One-Time Password (OTP) is:</p>
+
+          <h1 style="color:#4F46E5;">${otp}</h1>
+
+          <p>This OTP is valid for 10 minutes.</p>
+
+          <p>If you didn't request this, please ignore this email.</p>
+        </div>
+      `,
     });
 
-    console.log("✅ RESEND RESPONSE:", result);
-  } catch (err) {
-    console.log("❌ RESEND ERROR:", err);
+    console.log("✅ OTP Email Sent:", response);
+    return response;
+  } catch (error) {
+    console.error("❌ OTP Email Error:", error);
+    throw error;
   }
 };
 
-module.exports = { sendBookingEmail, sendOTPEmail };
+// =======================
+// Send Booking Email
+// =======================
+const sendBookingEmail = async (userEmail, userName, eventTitle) => {
+  try {
+    const response = await resend.emails.send({
+      from: "Eventora <onboarding@resend.dev>",
+      to: userEmail,
+      subject: `Booking Confirmed - ${eventTitle}`,
+      html: `
+        <div style="font-family: Arial, sans-serif;">
+          <h2>Hello ${userName} 👋</h2>
+
+          <p>Your booking has been confirmed.</p>
+
+          <h3>${eventTitle}</h3>
+
+          <p>Thank you for booking with Eventora.</p>
+
+          <br>
+
+          <p>Have a wonderful event!</p>
+        </div>
+      `,
+    });
+
+    console.log("✅ Booking Email Sent:", response);
+    return response;
+  } catch (error) {
+    console.error("❌ Booking Email Error:", error);
+    throw error;
+  }
+};
+
+module.exports = {
+  sendOTPEmail,
+  sendBookingEmail,
+};
