@@ -1,17 +1,25 @@
-const { Resend } = require("resend");
+const nodemailer = require("nodemailer");
 const dotenv = require("dotenv");
 
 dotenv.config();
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  host: process.env.BREVO_HOST,
+  port: process.env.BREVO_PORT,
+  secure: false,
+  auth: {
+    user: process.env.BREVO_USER,
+    pass: process.env.BREVO_PASS,
+  },
+});
 
 // =======================
 // Send OTP Email
 // =======================
 const sendOTPEmail = async (email, otp, type) => {
   try {
-    const response = await resend.emails.send({
-      from: "Eventora <onboarding@resend.dev>", // Change after verifying your own domain
+    const response = await transporter.sendMail({
+      from: `"Eventora" <${process.env.EMAIL_FROM}>`,
       to: email,
       subject:
         type === "account_verification"
@@ -31,7 +39,7 @@ const sendOTPEmail = async (email, otp, type) => {
       `,
     });
 
-    console.log("✅ OTP Email Sent:", response);
+    console.log("✅ OTP Email Sent");
     return response;
   } catch (error) {
     console.error("❌ OTP Email Error:", error);
@@ -44,8 +52,8 @@ const sendOTPEmail = async (email, otp, type) => {
 // =======================
 const sendBookingEmail = async (userEmail, userName, eventTitle) => {
   try {
-    const response = await resend.emails.send({
-      from: "Eventora <onboarding@resend.dev>",
+    const response = await transporter.sendMail({
+      from: `"Eventora" <${process.env.EMAIL_FROM}>`,
       to: userEmail,
       subject: `Booking Confirmed - ${eventTitle}`,
       html: `
@@ -65,7 +73,7 @@ const sendBookingEmail = async (userEmail, userName, eventTitle) => {
       `,
     });
 
-    console.log("✅ Booking Email Sent:", response);
+    console.log("✅ Booking Email Sent");
     return response;
   } catch (error) {
     console.error("❌ Booking Email Error:", error);
