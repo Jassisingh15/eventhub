@@ -14,6 +14,14 @@ const transporter = nodemailer.createTransport({
   connectionTimeout: 10000,
 });
 
+transporter.verify((error, success) => {
+  if (error) {
+    console.log("SMTP CONNECTION FAILED:", error);
+  } else {
+    console.log("SMTP READY");
+  }
+});
+
 // =======================
 // Send OTP Email
 // =======================
