@@ -3,11 +3,16 @@ import api from '../utils/axios';
 
 export const AuthContext = createContext();
 
+// This provider gives every component in the app access to:
+//   - user    -> the logged-in user (or null when logged out)
+//   - login / register / verifyOTP / logout -> the auth actions
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // On page load, restore the saved user from localStorage
+        // so that refreshing the page keeps you signed in.
         const userInfo = localStorage.getItem('userInfo');
         if (userInfo) {
             setUser(JSON.parse(userInfo));
@@ -19,6 +24,7 @@ export const AuthProvider = ({ children }) => {
         try {
             const { data } = await api.post('/auth/login', { email, password });
             setUser(data);
+            // Save user info + JWT token so the login survives page refreshes.
             localStorage.setItem('userInfo', JSON.stringify(data));
             localStorage.setItem('token', data.token);
             return data;
@@ -41,6 +47,7 @@ export const AuthProvider = ({ children }) => {
         try {
             const { data } = await api.post('/auth/verify-otp', { email, otp });
             setUser(data);
+            // The server returns a token once the OTP is correct.
             localStorage.setItem('userInfo', JSON.stringify(data));
             localStorage.setItem('token', data.token);
             return data;
@@ -57,6 +64,8 @@ export const AuthProvider = ({ children }) => {
 
     return (
         <AuthContext.Provider value={{ user, login, register, verifyOTP, logout, loading }}>
+            {/* Wait until the saved user has been loaded before showing the app,
+                so the UI never briefly flashes as logged out. */}
             {!loading && children}
         </AuthContext.Provider>
     );

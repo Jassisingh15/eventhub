@@ -178,15 +178,20 @@ exports.confirmBooking = async (req, res) => {
  */
 exports.getMyBookings = async (req, res) => {
   try {
-    const bookings =
-      req.user.role === "admin"
-        ? await Booking.find()
-            .populate("eventId")
-            .populate("userId", "name email")
-            .sort({ createdAt: -1 })
-        : await Booking.find({ userId: req.user.id })
-            .populate("eventId")
-            .sort({ createdAt: -1 });
+    let bookings;
+
+    // Admins see every booking on the platform
+    if (req.user.role === "admin") {
+      bookings = await Booking.find()
+        .populate("eventId")
+        .populate("userId", "name email")
+        .sort({ createdAt: -1 });
+    } else {
+      // Regular users only see their own bookings
+      bookings = await Booking.find({ userId: req.user.id })
+        .populate("eventId")
+        .sort({ createdAt: -1 });
+    }
 
     return res.json(bookings);
   } catch (error) {

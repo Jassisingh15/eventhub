@@ -1,152 +1,507 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import api from '../utils/axios';
-import { FaCalendarAlt, FaMapMarkerAlt, FaSearch, FaRegClock, FaTicketAlt, FaShieldAlt } from 'react-icons/fa';
+import React, { useState, useEffect, useContext } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
+import api from "../utils/axios";
+import EventCard from "../components/EventCard";
+
+import {
+  FaArrowRight,
+  FaCalendarAlt,
+  FaCompass,
+  FaMapMarkerAlt,
+  FaMinus,
+  FaPalette,
+  FaPlus,
+  FaSearch,
+  FaTicketAlt,
+  FaUsers,
+} from "react-icons/fa";
+
+const categories = [
+  { name: "Music", icon: FaTicketAlt },
+  { name: "Technology", icon: FaCompass },
+  { name: "Business", icon: FaUsers },
+  { name: "Sports", icon: FaCalendarAlt },
+  { name: "Workshops", icon: FaPalette },
+  { name: "Art & Culture", icon: FaMapMarkerAlt },
+];
+
+const faqs = [
+  [
+    "How do I book an event?",
+    "Browse the events, open the event you like, and follow the booking steps to reserve your spot.",
+  ],
+  [
+    "Can I cancel my booking?",
+    "Yes, you can cancel your booking from your dashboard when cancellation is available.",
+  ],
+  [
+    "How do I find events by category?",
+    "Select a category such as Music, Technology, Business, Sports, Workshops, or Art & Culture to filter related events.",
+  ],
+  [
+    "How do I know if my booking is confirmed?",
+    'Your booking status is shown in your dashboard. A confirmed booking will be marked as "confirmed".',
+  ],
+  ["Can I book free events?", "Yes. Free events can be booked without making a payment."],
+  [
+    "Where can I see my upcoming events?",
+    "Open your User Dashboard to view your bookings and upcoming events.",
+  ],
+  [
+    "Can admins create events?",
+    "Yes. Admin users can access the Admin Dashboard and create/manage events.",
+  ],
+];
 
 const Home = () => {
-    const [events, setEvents] = useState([]);
-    const [search, setSearch] = useState('');
-    const [loading, setLoading] = useState(true);
+  const { user } = useContext(AuthContext);
+  const location = useLocation();
 
-    useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            fetchEvents();
-        }, 400); // 400ms debounce
-        return () => clearTimeout(timeoutId);
-    }, [search]);
+  const [events, setEvents] = useState([]);
+  const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [openFaq, setOpenFaq] = useState(null);
 
-    const fetchEvents = async () => {
-        try {
-            const { data } = await api.get(`/events?search=${search}`);
-            setEvents(data);
-        } catch (error) {
-            console.error('Error fetching events:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+  useEffect(() => {
+    const timeoutId = setTimeout(fetchEvents, 400);
 
-    return (
-        <div className="flex flex-col min-h-screen">
-            {/* Hero Section */}
-            <div className="relative bg-black text-white rounded-3xl overflow-hidden mb-12 shadow-2xl">
-                <div className="absolute inset-0 opacity-40 bg-[url('https://images.unsplash.com/photo-1459749411175-04bf5292ceea?q=80&w=3000&auto=format&fit=crop')] bg-cover bg-center"></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent"></div>
-                <div className="relative p-10 md:p-20 text-center flex flex-col items-center z-10">
-                    <span className="bg-white/20 text-white backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold tracking-widest uppercase mb-6 border border-white/20">Welcome to Eventora</span>
-                    <h1 className="text-5xl md:text-7xl font-black mb-6 leading-tight tracking-tight drop-shadow-lg">
-                        Find Your Next <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-200 to-gray-500">Unforgettable</span> Experience
-                    </h1>
-                    <p className="text-gray-300 text-lg md:text-xl mb-10 max-w-2xl mx-auto font-light leading-relaxed">
-                        Discover the best tech conferences, late-night music festivals, and hands-on workshops happening directly in your area. Secure your spot today.
-                    </p>
+    return () => clearTimeout(timeoutId);
+  }, [search]);
 
-                    <div className="w-full max-w-2xl mx-auto relative flex items-center shadow-2xl group">
-                        <FaSearch className="absolute left-6 text-gray-500 text-xl group-focus-within:text-black transition-colors" />
-                        <input
-                            type="text"
-                            placeholder="Search events by title..."
-                            className="w-full pl-16 pr-6 py-5 rounded-full text-lg text-black bg-white/95 backdrop-blur-sm border-2 border-transparent focus:border-gray-500 focus:outline-none transition-all placeholder-gray-400 font-medium"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
-                    </div>
-                </div>
+  useEffect(() => {
+    const sectionId = location.hash.replace("#", "");
+
+    if (!sectionId) return;
+
+    const timeoutId = setTimeout(() => {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth" });
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, [location.hash]);
+
+  const scrollToEvents = () => {
+    document.getElementById("events")?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const fetchEvents = async () => {
+    try {
+      const { data } = await api.get(`/events?search=${search}`);
+      setEvents(data);
+    } catch (error) {
+      console.error("Error fetching events:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCategoryClick = (category) => {
+    setSelectedCategory(category);
+
+    setTimeout(() => {
+      document.getElementById("events")?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+  };
+
+  const filteredEvents = events.filter((event) => {
+    if (!selectedCategory) return true;
+
+    const category = event.category?.toLowerCase() || "";
+    const selected = selectedCategory.toLowerCase();
+
+    // Art & Culture => both Art and Culture
+    if (selected === "art & culture") {
+      return category.includes("art") || category.includes("culture");
+    }
+
+    // Technology => tech / technology
+    if (selected === "technology") {
+      return category.includes("tech") || category.includes("technology");
+    }
+
+    // Workshops
+    if (selected === "workshops") {
+      return category.includes("workshop");
+    }
+
+    return category.includes(selected);
+  });
+
+  return (
+    <div className="w-full">
+      <div className="relative z-10 mx-auto w-full max-w-6xl px-10 sm:px-14 lg:px-16">
+        <section className="relative flex min-h-[640px] items-center overflow-hidden pb-16 pt-28 sm:min-h-[680px] sm:pb-20 sm:pt-32 lg:min-h-[720px]">
+          <div className="relative mx-auto grid w-full max-w-6xl items-center gap-12 px-5 sm:px-7 lg:grid-cols-2 lg:px-0">
+            {/* ================= LEFT CONTENT ================= */}
+
+            <div>
+              <p className="eyebrow !text-[#397565]">
+                Discover · Connect · Experience
+              </p>
+
+              <h1 className="mt-5 max-w-xl font-serif text-5xl leading-[1.04] text-[#18352D] sm:text-6xl lg:text-7xl">
+                Moments worth{" "}
+                <em className="font-normal text-[#397565]">showing up</em> for.
+              </h1>
+
+              <p className="mt-6 max-w-lg text-base leading-7 text-[#18352D]/70">
+                Discover experiences, connect with people, and book events that
+                leave a mark.
+              </p>
+
+              <div className="mt-8 flex flex-wrap gap-4">
+                {/* Explore Events */}
+                <Link
+                  to="/#events"
+                  onClick={scrollToEvents}
+                  className="button-primary !bg-[#397565] !text-white hover:!bg-[#2E6254]"
+                >
+                  Explore events
+                  <FaArrowRight />
+                </Link>
+
+                {/* ADMIN ONLY */}
+                {user?.role === "admin" && (
+                  <Link
+                    to="/admin"
+                    className="button-secondary !border-[#18352D]/20 !bg-white/60 !text-[#18352D] hover:!border-[#397565] hover:!text-[#397565]"
+                  >
+                    Create event
+                  </Link>
+                )}
+              </div>
             </div>
 
-            {/* Why Choose Us / Features row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16 px-4">
-                <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:-translate-y-1 transition duration-300">
-                    <div className="w-16 h-16 bg-gray-900 text-white rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-md shadow-gray-200/50">
-                        <FaRegClock />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-3">Fast Booking</h3>
-                    <p className="text-gray-500 text-sm leading-relaxed">Secure your tickets instantly with our fast streamlined booking infrastructure built for speed.</p>
-                </div>
-                <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:-translate-y-1 transition duration-300">
-                    <div className="w-16 h-16 bg-gray-900 text-white rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-md shadow-gray-200/50">
-                        <FaTicketAlt />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-3">Seamless Access</h3>
-                    <p className="text-gray-500 text-sm leading-relaxed">Download tickets instantly or manage them right from your personal dashboard with easily.</p>
-                </div>
-                <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:-translate-y-1 transition duration-300">
-                    <div className="w-16 h-16 bg-gray-900 text-white rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-md shadow-gray-200/50">
-                        <FaShieldAlt />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-3">Secure Platform</h3>
-                    <p className="text-gray-500 text-sm leading-relaxed">All transactions and registrations are bounded by cutting-edge security and 2FA OTP tech.</p>
-                </div>
-            </div>
+            <div className="relative mx-auto w-full max-w-md">
+              <img
+                className="h-[350px] w-full rounded-[2rem] object-cover shadow-xl sm:h-[420px]"
+                src="https://plus.unsplash.com/premium_photo-1663051210654-0c8a835dad1f?q=80&w=1170&auto=format&fit=crop"
+                alt="People enjoying an event"
+              />
 
-            <div className="flex items-center justify-between mb-8 px-2 border-b border-gray-200 pb-4">
-                <h2 className="text-3xl font-extrabold text-gray-900">Upcoming Events</h2>
-                <div className="text-gray-500 font-medium">{events.length} results found</div>
-            </div>
-
-            {loading ? (
-                <div className="text-center py-20 text-xl font-semibold text-gray-600">Loading events...</div>
-            ) : events.length === 0 ? (
-                <div className="text-center py-20 text-xl text-gray-500">No events found matching your search.</div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {events.map(event => (
-                        <div key={event._id} className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition flex flex-col">
-                            <div className="h-48 bg-gray-200 overflow-hidden relative">
-                                {event.image ? (
-                                    <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-600 font-bold text-2xl">
-                                        {event.category || 'Event'}
-                                    </div>
-                                )}
-                                <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-bold shadow-sm">
-                                    {event.ticketPrice === 0 ? <span className="text-green-600">FREE</span> : <span className="text-gray-900">₹{event.ticketPrice}</span>}
-                                </div>
-                            </div>
-                            <div className="p-6 flex-grow flex flex-col">
-                                <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">{event.category}</div>
-                                <h2 className="text-xl font-bold text-gray-800 mb-3">{event.title}</h2>
-                                <div className="flex flex-col gap-2 mb-4 text-gray-600 text-sm">
-                                    <div className="flex items-center gap-2">
-                                        <FaCalendarAlt className="text-gray-400" />
-                                        <span>{new Date(event.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <FaMapMarkerAlt className="text-gray-400" />
-                                        <span>{event.location}</span>
-                                    </div>
-                                </div>
-                                <div className="mt-auto">
-                                    <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                                        <div className="bg-gray-700 h-2 rounded-full" style={{ width: `${(event.availableSeats / event.totalSeats) * 100}%` }}></div>
-                                    </div>
-                                    <p className="text-xs text-gray-500 mb-4">{event.availableSeats} of {event.totalSeats} seats remaining</p>
-                                    <Link to={`/events/${event._id}`} className="block w-full text-center bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold py-2 rounded-lg transition">
-                                        View Details
-                                    </Link>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {/* Footer Section */}
-            <footer className="mt-auto pt-16 pb-8 border-t border-gray-200 text-center">
-                <div className="flex justify-center items-center gap-2 mb-4">
-                    <FaTicketAlt className="text-gray-800 text-2xl" />
-                    <span className="text-xl font-bold text-gray-900">Eventora</span>
-                </div>
-                <p className="text-gray-500 text-sm mb-6 max-w-md mx-auto">
-                    The simplest, most dynamic way to manage, discover, and host world-class events in your local city. Let's make memories together.
+              <div className="absolute -left-4 top-8 rounded-2xl bg-white/90 px-4 py-3 text-[#18352D] shadow-lg backdrop-blur">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#397565]">
+                  This week
                 </p>
-                <div className="text-xs text-gray-400 font-medium uppercase tracking-wider">
-                    &copy; {new Date().getFullYear()} Eventora Platform. All rights reserved.
+
+                <p className="mt-1 font-serif text-lg">Find your people</p>
+              </div>
+
+              <div className="absolute -bottom-5 right-5 rounded-2xl bg-[#397565] px-4 py-3 text-white shadow-lg">
+                <FaTicketAlt className="mb-1" />
+
+                <p className="text-xs font-bold">Your story starts here</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* =====================================================
+            CATEGORIES
+        ====================================================== */}
+
+        <section id="categories" className="py-20">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="eyebrow">Browse your way</p>
+
+              <h2 className="section-heading mt-3">Start with a feeling.</h2>
+            </div>
+
+            <p className="max-w-sm text-sm leading-6 text-[#18352D]/60">
+              Explore events by category and find something that matches your
+              interests.
+            </p>
+          </div>
+
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {categories.map(({ name, icon: Icon }) => (
+              <button
+                key={name}
+                onClick={() => handleCategoryClick(name)}
+                className={`group rounded-2xl border p-5 text-left transition duration-300 hover:-translate-y-1 ${
+                  selectedCategory === name
+                    ? "border-[#397565] bg-[#397565] text-white shadow-lg"
+                    : "border-[#18352D]/10 bg-white/80 text-[#18352D] backdrop-blur hover:border-[#397565]"
+                }`}
+              >
+                <Icon
+                  className={`text-xl ${
+                    selectedCategory === name ? "text-white" : "text-[#397565]"
+                  }`}
+                />
+
+                <p
+                  className={`mt-8 text-sm font-bold ${
+                    selectedCategory === name ? "text-white" : "text-[#18352D]"
+                  }`}
+                >
+                  {name}
+                </p>
+              </button>
+            ))}
+          </div>
+
+          {selectedCategory && (
+            <div className="mt-5 flex items-center justify-between rounded-xl bg-[#18352D]/95 px-5 py-3 text-sm text-white backdrop-blur">
+              <span>
+                Showing events in <strong>{selectedCategory}</strong>
+                {selectedCategory === "Art & Culture" && (
+                  <span className="ml-1 text-white/60">(Art + Culture)</span>
+                )}
+              </span>
+
+              <button
+                onClick={() => setSelectedCategory("")}
+                className="font-bold text-[#BFDCD2] hover:text-white"
+              >
+                Clear filter
+              </button>
+            </div>
+          )}
+        </section>
+
+        {/* =====================================================
+            EVENTS
+        ====================================================== */}
+
+        <section id="events" className="scroll-mt-24">
+          <div className="flex flex-wrap items-end justify-between gap-5 border-b border-[#18352D]/10 pb-6">
+            <div>
+              <p className="eyebrow">Hand-picked experiences</p>
+
+              <h2 className="section-heading mt-3">Events worth your time.</h2>
+
+              {selectedCategory && (
+                <p className="mt-2 text-sm text-[#18352D]/55">
+                  Category:{" "}
+                  <span className="font-bold text-[#397565]">
+                    {selectedCategory}
+                  </span>
+                </p>
+              )}
+            </div>
+
+            {/* LOWER SEARCH BAR - KEEP */}
+            <div className="relative w-full sm:w-80">
+              <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-[#397565]" />
+
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="field !pl-11"
+                placeholder="Search by title"
+              />
+            </div>
+          </div>
+
+          {loading ? (
+            <p className="py-16 text-center text-[#18352D]/60">
+              Loading events...
+            </p>
+          ) : filteredEvents.length === 0 ? (
+            <div className="py-16 text-center">
+              <FaCompass className="mx-auto text-4xl text-[#397565]" />
+
+              <p className="mt-4 text-[#18352D]/60">
+                {selectedCategory
+                  ? `No ${selectedCategory} events found.`
+                  : "No events found matching your search."}
+              </p>
+
+              {selectedCategory && (
+                <button
+                  onClick={() => setSelectedCategory("")}
+                  className="mt-4 font-bold text-[#397565]"
+                >
+                  View all events
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {filteredEvents.map((event) => (
+                <EventCard key={event._id} event={event} />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* =====================================================
+            ABOUT
+        ====================================================== */}
+
+        <section
+          id="about"
+          className="my-24 border-y border-white/70 bg-white/20 px-6 py-16 backdrop-blur-sm sm:px-10 sm:py-20 lg:px-14"
+        >
+          <div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+            <div className="lg:pt-6">
+              <p className="eyebrow !text-[#8A6A4A]">How Eventora works</p>
+
+              <h2 className="section-heading mt-3 max-w-md">
+              Why Eventora?
+              </h2>
+
+              <p className="mt-5 max-w-sm font-serif text-2xl leading-tight text-[#18352D] sm:text-3xl">
+                Less planning. More living.
+              </p>
+
+              <div className="mt-10 w-full max-w-sm snap-x snap-mandatory overflow-x-auto scroll-smooth pb-2">
+                <div className="flex min-w-max gap-3 pr-3">
+                  <img
+                    src="https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=1000&auto=format&fit=crop"
+                    alt="People connecting at an event"
+                    className="h-56 w-72 snap-start rounded-3xl object-cover shadow-lg shadow-[#18352D]/10 sm:h-64 sm:w-80"
+                  />
+                  <img
+                    src="https://images.unsplash.com/photo-1505236858219-8359eb29e329?q=80&w=1000&auto=format&fit=crop"
+                    alt="Friends enjoying an event"
+                    className="h-56 w-72 snap-start rounded-3xl object-cover shadow-lg shadow-[#18352D]/10 sm:h-64 sm:w-80"
+                  />
+                  <img
+                    src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?q=80&w=1000&auto=format&fit=crop"
+                    alt="People sharing a memorable experience"
+                    className="h-56 w-72 snap-start rounded-3xl object-cover shadow-lg shadow-[#18352D]/10 sm:h-64 sm:w-80"
+                  />
                 </div>
-            </footer>
-        </div>
-    );
+              </div>
+            </div>
+
+            <div className="border-l border-[#397565]/25 pl-6 sm:pl-10">
+              <div className="space-y-1">
+              {[
+                ["01", "Discover", "Find events that feel made for you.", FaCompass],
+                ["02", "Book", "Reserve your place in a few simple steps.", FaTicketAlt],
+                [
+                  "03",
+                  "Experience",
+                  "Show up, meet people, make it memorable.",
+                  FaUsers,
+                ],
+              ].map(([number, title, text, Icon]) => (
+                <div key={number} className="group py-6 first:pt-0 last:pb-0 transition duration-300 hover:translate-x-1">
+                  <div className="flex items-start gap-5">
+                    <span className="font-serif text-5xl leading-none text-[#397565]/80">{number}</span>
+
+                    <div className="pt-1">
+                      <div className="flex items-center gap-3">
+                        <Icon className="text-[#8A6A4A]" />
+                        <h3 className="text-lg font-bold text-[#18352D]">{title}</h3>
+                      </div>
+
+                      <p className="mt-2 max-w-sm text-sm leading-6 text-[#18352D]/65">{text}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              </div>
+
+          <div className="mt-12 flex flex-col gap-5 border-t border-[#397565]/15 pt-7">
+            <p className="max-w-xl border-l-2 border-[#8A6A4A] pl-4 font-serif text-2xl leading-tight text-[#18352D] sm:text-3xl">
+              “The best plans are the ones you actually make.”
+            </p>
+
+            <Link
+              to="/#events"
+              onClick={scrollToEvents}
+              className="inline-flex items-center gap-2 text-sm font-bold text-[#397565] transition hover:text-[#18352D]"
+            >
+              See what’s on
+              <FaArrowRight />
+            </Link>
+          </div>
+          </div>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section className="my-24 border-y border-white/70 bg-white/25 px-6 py-16 backdrop-blur-sm sm:px-10 sm:py-20">
+          <div className="mx-auto max-w-3xl">
+            <div className="text-center">
+              <p className="eyebrow !text-[#8A6A4A]">Frequently asked questions</p>
+              <h2 className="section-heading mt-3">Everything you need to know.</h2>
+              <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-[#18352D]/65">
+                A few helpful answers to make finding and booking your next event simple.
+              </p>
+            </div>
+
+            <div className="mt-12 border-t border-[#397565]/20">
+              {faqs.map(([question, answer], index) => {
+                const isOpen = openFaq === index;
+
+                return (
+                  <div key={question} className="border-b border-[#397565]/20">
+                    <button
+                      type="button"
+                      onClick={() => setOpenFaq(isOpen ? null : index)}
+                      aria-expanded={isOpen}
+                      className="flex w-full items-center justify-between gap-6 py-6 text-left text-base font-bold text-[#18352D] transition hover:text-[#397565] sm:text-lg"
+                    >
+                      {question}
+                      {isOpen ? (
+                        <FaMinus className="shrink-0 text-sm text-[#397565]" />
+                      ) : (
+                        <FaPlus className="shrink-0 text-sm text-[#397565]" />
+                      )}
+                    </button>
+
+                    <div
+                      className={`grid transition-[grid-template-rows] duration-300 ${
+                        isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                      }`}
+                    >
+                      <div className="overflow-hidden">
+                        <p className="max-w-2xl pb-6 text-sm leading-6 text-[#18352D]/65">
+                          {answer}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* =====================================================
+            CTA
+        ====================================================== */}
+
+        <section className="mb-10 flex flex-col gap-8 rounded-[2rem] bg-[#18352D] px-8 py-12 text-white sm:px-12 sm:py-14 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+          <p className="eyebrow !text-[#BFDCD2]">Make room for something new</p>
+
+          <h2 className="mt-3 font-serif text-4xl leading-tight sm:text-5xl">
+            Your next great experience is waiting.
+          </h2>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-6 lg:shrink-0">
+            <Link
+              to="/#events"
+              onClick={scrollToEvents}
+              className="button-primary !bg-[#397565] !text-white hover:!bg-white hover:!text-[#18352D]"
+            >
+              Explore events
+            </Link>
+
+            {/* ADMIN ONLY */}
+            {user?.role === "admin" && (
+              <Link
+                to="/admin"
+                className="text-sm font-bold text-white underline underline-offset-8 transition hover:text-[#BFDCD2]"
+              >
+                Create event
+              </Link>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
 };
 
 export default Home;
